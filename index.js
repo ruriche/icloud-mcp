@@ -3,34 +3,96 @@
 /**
  * iCloud MCP Server
  *
- * Provides Claude with access to iCloud services:
- * - Email (via IMAP/SMTP)
- * - Calendar (via CalDAV)
- * - Contacts (via CardDAV)
+ * Provides Claude with access to Apple services:
+ * - Email (via IMAP/SMTP or Mail.app)
+ * - Calendar (via CalDAV or Calendar.app)
+ * - Contacts (via CardDAV or Contacts.app)
+ * - Reminders (via Reminders.app - local only)
+ * - Notes (via Notes.app - local only)
+ * - Messages (via Messages.app - local only)
+ * - Safari (via Safari.app - local only)
+ *
+ * Modes:
+ * - LOCAL (default): Uses AppleScript to access native macOS apps (fast, requires Mac)
+ * - CLOUD: Uses iCloud protocols (IMAP, CalDAV, CardDAV) - works from anywhere
  */
 
 const readline = require('readline');
 const config = require('./config');
 
-// Import modules
+// Import auth module
 const { authTools } = require('./auth');
-const { emailTools } = require('./email');
-const { calendarTools } = require('./calendar');
-const { contactsTools } = require('./contacts');
 
-// Combine all tools
-const TOOLS = [
-  ...authTools,
-  ...emailTools,
-  ...calendarTools,
-  ...contactsTools
-];
+// Determine which tools to load based on mode
+let TOOLS = [...authTools];
+let MODE = 'cloud';
+
+if (config.USE_LOCAL_MODE && config.IS_MACOS) {
+  MODE = 'local';
+
+  // Local mode - use AppleScript clients
+  // Note: For simplicity, we'll create combined tools that work in both modes
+  // The local-only modules are always available in local mode
+
+  // Import local-only modules
+  const { remindersTools } = require('./reminders');
+  const { notesTools } = require('./notes');
+  const { messagesTools } = require('./messages');
+  const { safariTools } = require('./safari');
+
+  // Import existing modules (they still work, cloud tools available)
+  const { emailTools } = require('./email');
+  const { calendarTools } = require('./calendar');
+  const { contactsTools } = require('./contacts');
+
+  // Add local-only tools
+  TOOLS = [
+    ...authTools,
+    ...emailTools,
+    ...calendarTools,
+    ...contactsTools,
+    ...remindersTools,
+    ...notesTools,
+    ...messagesTools,
+    ...safariTools
+  ];
+
+} else if (config.USE_LOCAL_MODE && !config.IS_MACOS) {
+  // Local mode requested but not on macOS - fall back to cloud
+  MODE = 'cloud (fallback - not macOS)';
+
+  const { emailTools } = require('./email');
+  const { calendarTools } = require('./calendar');
+  const { contactsTools } = require('./contacts');
+
+  TOOLS = [
+    ...authTools,
+    ...emailTools,
+    ...calendarTools,
+    ...contactsTools
+  ];
+
+} else {
+  // Cloud mode
+  MODE = 'cloud';
+
+  const { emailTools } = require('./email');
+  const { calendarTools } = require('./calendar');
+  const { contactsTools } = require('./contacts');
+
+  TOOLS = [
+    ...authTools,
+    ...emailTools,
+    ...calendarTools,
+    ...contactsTools
+  ];
+}
 
 // Server info
 const SERVER_INFO = {
   name: 'icloud-mcp',
-  version: '1.0.0',
-  description: 'MCP server for iCloud services (Email, Calendar, Contacts)'
+  version: '2.0.0',
+  description: `MCP server for Apple services (Mode: ${MODE})`
 };
 
 /**
@@ -125,8 +187,15 @@ async function handleRequest(request) {
  */
 function startServer() {
   console.error('[icloud-mcp] Starting iCloud MCP server...');
+  console.error(`[icloud-mcp] Mode: ${MODE}`);
   console.error(`[icloud-mcp] Tools available: ${TOOLS.length}`);
-  console.error(`[icloud-mcp] Credentials configured: ${!!(config.ICLOUD_EMAIL && config.ICLOUD_APP_PASSWORD)}`);
+
+  if (MODE === 'local') {
+    console.error('[icloud-mcp] Services: Email, Calendar, Contacts, Reminders, Notes, Messages, Safari');
+  } else {
+    console.error('[icloud-mcp] Services: Email, Calendar, Contacts');
+    console.error(`[icloud-mcp] Credentials configured: ${!!(config.ICLOUD_EMAIL && config.ICLOUD_APP_PASSWORD)}`);
+  }
 
   if (config.USE_TEST_MODE) {
     console.error('[icloud-mcp] TEST MODE ENABLED');

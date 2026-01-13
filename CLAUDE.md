@@ -1,29 +1,54 @@
 # iCloud MCP Server
 
-This MCP server provides Claude with access to iCloud services via standard protocols.
+This MCP server provides Claude with access to Apple services via two modes:
+
+## Modes
+
+| Mode | Description | Services | Requirements |
+|------|-------------|----------|--------------|
+| **LOCAL** (default) | AppleScript access to macOS apps | 7 services, 31 tools | macOS |
+| **CLOUD** | iCloud protocols (IMAP, CalDAV, CardDAV) | 3 services, 17 tools | App-specific password |
 
 ## Services Available
 
-- **Email** - IMAP/SMTP (imap.mail.me.com / smtp.mail.me.com)
-- **Calendar** - CalDAV (caldav.icloud.com)
-- **Contacts** - CardDAV (contacts.icloud.com)
+### Local Mode (macOS only)
+
+| Service | Protocol | Tools |
+|---------|----------|-------|
+| **Email** | Mail.app (AppleScript) | 6 |
+| **Calendar** | Calendar.app (AppleScript) | 5 |
+| **Contacts** | Contacts.app (AppleScript) | 5 |
+| **Reminders** | Reminders.app (AppleScript) | 7 |
+| **Notes** | Notes.app (AppleScript) | 5 |
+| **Messages** | Messages.app (AppleScript) | 1 |
+| **Safari** | Safari.app (AppleScript) | 4 |
+
+### Cloud Mode
+
+| Service | Protocol | Endpoint |
+|---------|----------|----------|
+| **Email** | IMAP/SMTP | imap.mail.me.com / smtp.mail.me.com |
+| **Calendar** | CalDAV | caldav.icloud.com |
+| **Contacts** | CardDAV | contacts.icloud.com |
 
 ## Development Commands
 
-- `npm install` - Install dependencies
-- `npm start` - Start the MCP server
-- `npm run inspect` - Test with MCP Inspector
+```bash
+npm install          # Install dependencies
+npm start            # Start server (local mode by default)
+npm run inspect      # Test with MCP Inspector
 
-## Authentication Setup
+# Cloud mode
+USE_LOCAL_MODE=false npm start
+```
 
-This server requires an **app-specific password** from Apple:
-
-1. Go to https://appleid.apple.com
-2. Sign in → Security → App-Specific Passwords
-3. Generate a new password named "iCloud MCP"
-4. Copy the 16-character password to `.env`
+## Configuration
 
 ```env
+# .env file
+USE_LOCAL_MODE=true    # true=AppleScript (fast), false=iCloud protocols
+
+# Only needed for cloud mode:
 ICLOUD_EMAIL=your-email@icloud.com
 ICLOUD_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 ```
@@ -32,50 +57,111 @@ ICLOUD_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
 
 ```
 icloud-mcp/
-├── index.js              # Main MCP server
+├── index.js              # Main MCP server (mode switching)
 ├── config.js             # Configuration
 ├── auth/                 # Credential management
-├── email/                # IMAP/SMTP module
-│   ├── imap-client.js    # IMAP connection
-│   ├── smtp-client.js    # SMTP for sending
-│   └── index.js          # Tool exports
-├── calendar/             # CalDAV module
-│   ├── caldav-client.js  # CalDAV connection (tsdav)
-│   └── index.js          # Tool exports
-├── contacts/             # CardDAV module
-│   ├── carddav-client.js # CardDAV connection (tsdav)
-│   └── index.js          # Tool exports
-└── utils/                # Shared utilities
+├── email/                # Email module
+│   ├── imap-client.js    # Cloud: IMAP
+│   ├── smtp-client.js    # Cloud: SMTP
+│   ├── local-client.js   # Local: Mail.app
+│   └── index.js          # Tool definitions
+├── calendar/             # Calendar module
+│   ├── caldav-client.js  # Cloud: CalDAV
+│   ├── local-client.js   # Local: Calendar.app
+│   └── index.js
+├── contacts/             # Contacts module
+│   ├── carddav-client.js # Cloud: CardDAV
+│   ├── local-client.js   # Local: Contacts.app
+│   └── index.js
+├── reminders/            # Reminders (local only)
+│   ├── local-client.js
+│   └── index.js
+├── notes/                # Notes (local only)
+│   ├── local-client.js
+│   └── index.js
+├── messages/             # Messages (local only)
+│   ├── local-client.js
+│   └── index.js
+├── safari/               # Safari (local only)
+│   ├── local-client.js
+│   └── index.js
+└── utils/
+    ├── applescript.js    # AppleScript executor
+    ├── date-utils.js
+    └── error-handler.js
 ```
 
-## Tools (17 total)
+## Tools (31 total in local mode)
 
-**Auth (2)**: about, check-auth-status
+### Auth (2)
+- `about` - Server information
+- `check-auth-status` - Verify credentials
 
-**Email (6)**: list-emails, read-email, send-email, search-emails, mark-as-read, list-folders
+### Email (6)
+- `list-emails` - List emails from folder
+- `read-email` - Read email content
+- `send-email` - Send email
+- `search-emails` - Search by criteria
+- `mark-as-read` - Mark read/unread
+- `list-folders` - List mail folders
 
-**Calendar (4)**: list-events, create-event, delete-event, list-calendars
+### Calendar (5)
+- `list-events` - List upcoming events
+- `list-calendars` - List calendars
+- `create-event` - Create event
+- `update-event` - Update event
+- `delete-event` - Delete event
 
-**Contacts (5)**: list-contacts, search-contacts, read-contact, create-contact, delete-contact
+### Contacts (5)
+- `list-contacts` - List contacts
+- `search-contacts` - Search contacts
+- `read-contact` - Get contact details
+- `create-contact` - Create contact
+- `delete-contact` - Delete contact
 
-## Key Differences from Outlook MCP
+### Reminders (7) - Local only
+- `list-reminder-lists` - List reminder lists
+- `list-reminders` - List reminders
+- `create-reminder` - Create reminder
+- `update-reminder` - Update reminder
+- `complete-reminder` - Mark complete
+- `delete-reminder` - Delete reminder
+- `search-reminders` - Search reminders
 
-| Aspect | Outlook MCP | iCloud MCP |
-|--------|-------------|------------|
-| Auth | OAuth 2.0 (browser) | App-specific password |
-| Email | Graph API REST | IMAP protocol |
-| Calendar | Graph API REST | CalDAV |
-| Contacts | Graph API REST | CardDAV |
+### Notes (5) - Local only
+- `list-note-folders` - List folders
+- `list-notes` - List notes
+- `read-note` - Read note content
+- `create-note` - Create note
+- `search-notes` - Search notes
+
+### Messages (1) - Local only
+- `send-message` - Send iMessage/SMS
+
+### Safari (4) - Local only
+- `list-safari-tabs` - List open tabs
+- `get-current-safari-url` - Get current URL
+- `open-safari-url` - Open URL
+- `close-safari-tab` - Close tab
+
+## Permissions (macOS)
+
+When first used, macOS will prompt for access to:
+- Mail
+- Calendar
+- Contacts
+- Reminders
+- Notes
+- Messages
+- Safari
+
+Grant access in **System Settings > Privacy & Security > Automation**.
 
 ## Limitations
 
-- **No Reminders** - iOS 13+ format requires internal API
-- **No Notes** - Requires internal API
-- **No iCloud Drive** - Requires CloudKit setup
-- **No Find My** - Internal API only
-
-## Troubleshooting
-
-- **Auth failed**: Verify app-specific password (not your Apple ID password)
-- **IMAP error**: Check email format is correct
-- **CalDAV/CardDAV timeout**: iCloud servers can be slow, retry
+| Feature | Status | Reason |
+|---------|--------|--------|
+| iCloud Drive | ❌ | Requires CloudKit |
+| Find My | ❌ | Internal API only |
+| Read Messages | ❌ | macOS limitation |
+| Edit Notes | ⚠️ Limited | AppleScript limitation |

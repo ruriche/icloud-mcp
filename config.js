@@ -6,8 +6,12 @@
 require('dotenv').config();
 
 module.exports = {
-  // Test mode flag
-  USE_TEST_MODE: process.env.USE_TEST_MODE === 'false',
+  // Mode flags
+  USE_TEST_MODE: process.env.USE_TEST_MODE === 'true',
+  USE_LOCAL_MODE: process.env.USE_LOCAL_MODE !== 'false', // Default to true (local mode)
+
+  // Check if running on macOS (required for local mode)
+  IS_MACOS: process.platform === 'darwin',
 
   // iCloud credentials
   ICLOUD_EMAIL: process.env.ICLOUD_EMAIL,
