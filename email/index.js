@@ -1,13 +1,20 @@
 /**
  * Email module for iCloud MCP
- * Provides email tools via IMAP/SMTP
+ * Provides email tools via IMAP/SMTP or local Mail.app
  */
 
-const { listEmails, readEmail, searchEmails, markAsRead, listFolders } = require('./imap-client');
-const { sendEmail } = require('./smtp-client');
+const config = require('../config');
 const { formatSuccess, formatError, withErrorHandler } = require('../utils/error-handler');
 const { formatDate, formatRelative } = require('../utils/date-utils');
-const config = require('../config');
+
+const useLocal = config.USE_LOCAL_MODE && config.IS_MACOS;
+const { listEmails, readEmail, searchEmails, markAsRead, listFolders } = useLocal
+  ? require('./local-client')
+  : require('./imap-client');
+const { sendEmail } = useLocal
+  ? require('./local-client')
+  : require('./smtp-client');
+
 
 /**
  * Handler: List emails
