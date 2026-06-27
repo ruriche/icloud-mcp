@@ -1,12 +1,16 @@
 /**
  * Calendar module for iCloud MCP
- * Provides calendar tools via CalDAV
+ * Provides calendar tools via CalDAV or local Calendar.app
  */
 
-const { listEvents, createEvent, deleteEvent, getCalendars } = require('./caldav-client');
+const config = require('../config');
 const { formatSuccess, formatError, withErrorHandler } = require('../utils/error-handler');
 const { formatDate } = require('../utils/date-utils');
-const config = require('../config');
+
+const useLocal = config.USE_LOCAL_MODE && config.IS_MACOS;
+const { listEvents, createEvent, deleteEvent, getCalendars } = useLocal
+  ? (() => { const c = require('./local-client'); return { ...c, getCalendars: c.listCalendars }; })()
+  : require('./caldav-client');
 
 /**
  * Handler: List events
