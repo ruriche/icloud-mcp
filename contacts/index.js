@@ -1,11 +1,15 @@
 /**
  * Contacts module for iCloud MCP
- * Provides contacts tools via CardDAV
+ * Provides contacts tools via CardDAV or local Contacts.app
  */
 
-const { listContacts, searchContacts, getContact, createContact, deleteContact } = require('./carddav-client');
-const { formatSuccess, formatError, withErrorHandler } = require('../utils/error-handler');
 const config = require('../config');
+const { formatSuccess, formatError, withErrorHandler } = require('../utils/error-handler');
+
+const useLocal = config.USE_LOCAL_MODE && config.IS_MACOS;
+const { listContacts, searchContacts, getContact, createContact, deleteContact } = useLocal
+  ? (() => { const c = require('./local-client'); return { ...c, getContact: c.readContact }; })()
+  : require('./carddav-client');
 
 /**
  * Handler: List contacts
