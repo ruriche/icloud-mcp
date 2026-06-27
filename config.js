@@ -3,7 +3,7 @@
  * Centralized configuration for all iCloud services
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 module.exports = {
   // Mode flags
