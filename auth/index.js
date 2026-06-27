@@ -10,6 +10,7 @@ const { formatSuccess, formatError } = require('../utils/error-handler');
  * Check if credentials are configured
  */
 function hasCredentials() {
+  if (config.USE_LOCAL_MODE && config.IS_MACOS) return true;
   return !!(config.ICLOUD_EMAIL && config.ICLOUD_APP_PASSWORD);
 }
 
@@ -56,6 +57,18 @@ Setup instructions:
 async function handleCheckAuthStatus() {
   if (!hasCredentials()) {
     return formatError(new Error('UNAUTHORIZED'));
+  }
+
+  if (config.USE_LOCAL_MODE && config.IS_MACOS) {
+    return formatSuccess(
+      `Authentication status: OK (local mode)
+
+Running in local mode — no iCloud credentials required.
+Services use macOS apps directly via AppleScript:
+- Email (Mail.app)
+- Calendar (Calendar.app)
+- Contacts (Contacts.app)`
+    );
   }
 
   return formatSuccess(
