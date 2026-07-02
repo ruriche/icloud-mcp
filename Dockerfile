@@ -22,4 +22,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 Run through the mcp-proxy to convert stdio to SSE on port 8080
-CMD ["uvx", "mcp-proxy", "node", "index.js"]
+CMD ["uvx", "mcp-proxy", "--port", "8080", "--host", "0.0.0.0", "node", "index.js"]
